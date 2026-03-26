@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PatternPad — SVG Pattern Generator</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f5;--white:#fff;--panel:#fff;--border:#e0e0e0;
+  --text:#1a1a2e;--text2:#555;--accent:#00d4aa;--accent2:#1a73e8;
+  --danger:#e53935;--sidebar:320px;--header:48px;--banner:60px;
+  --radius:8px;--shadow:0 2px 8px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:13px;
+  background:var(--bg);color:var(--text);overflow:hidden}
+button{cursor:pointer;font-family:inherit;font-size:13px;border:none;outline:none}
+input{font-family:inherit;font-size:13px;outline:none}
+select{font-family:inherit;font-size:13px;outline:none;cursor:pointer}
+
+/* ── Header ───────────────────────────────────────────────────── */
+#header{
+  position:fixed;top:0;left:0;right:0;height:var(--header);
+  background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100;
+}
+#logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--text)}
+#logo svg{width:28px;height:28px}
+#header-mid{flex:1}
+.hbtn{
+  display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;
+  font-size:12px;font-weight:600;transition:.15s
+}
+.hbtn-coffee{background:#fff0e0;color:#c96a00;border:1px solid #ffd8a8}
+.hbtn-coffee:hover{background:#ffe8c0}
+.hbtn-refresh{background:#f0f0f0;color:var(--text);border:1px solid var(--border)}
+.hbtn-refresh:hover{background:#e4e4e4}
+.hbtn-download{background:var(--accent);color:#fff}
+.hbtn-download:hover{filter:brightness(1.1)}
+.hbtn-batch{background:var(--accent2);color:#fff}
+.hbtn-batch:hover{filter:brightness(1.1)}
+
+/* ── Banner ───────────────────────────────────────────────────── */
+#banner{
+  position:fixed;top:var(--header);left:0;right:var(--sidebar);height:var(--banner);
+  background:linear-gradient(135deg,#e8f4fd,#f0f8ff);
+  border-bottom:1px solid #cce4f7;display:flex;align-items:center;
+  padding:0 24px;gap:16px;z-index:90;overflow:hidden;
+}
+#banner-text h3{font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:2px}
+#banner-text p{font-size:11px;color:#4a6a8c}
+#banner img{height:50px;position:absolute;right:20px;border-radius:4px;opacity:.8}
+.banner-btn{
+  padding:5px 14px;background:var(--accent2);color:#fff;
+  border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;
+  display:flex;align-items:center;gap:4px
+}
+.banner-btn:hover{filter:brightness(1.1)}
+
+/* ── Canvas Area ──────────────────────────────────────────────── */
+#canvas-area{
+  position:fixed;
+  top:calc(var(--header) + var(--banner));
+  left:0;right:var(--sidebar);
+  bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);background-image:radial-gradient(#ccc 1px,transparent 1px);
+  background-size:20px 20px;overflow:auto;padding:24px;
+}
+#pattern-wrap{
+  background:#fff;box-shadow:var(--shadow);
+  display:inline-block;line-height:0;position:relative;
+}
+#pattern-svg{display:block}
+
+/* ── Sidebar ──────────────────────────────────────────────────── */
+#sidebar{
+  position:fixed;top:var(--header);right:0;width:var(--sidebar);
+  bottom:0;background:var(--panel);border-left:1px solid var(--border);
+  overflow-y:auto;overflow-x:hidden;z-index:95;
+}
+#sidebar::-webkit-scrollbar{width:4px}
+#sidebar::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+
+.section-head{
+  font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--accent2);
+  text-transform:uppercase;padding:14px 16px 6px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sidebar-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;border-bottom:1px solid #f0f0f0;min-height:40px;
+}
+.sidebar-row label{font-size:12px;color:var(--text2);font-weight:500}
+.sidebar-row-full{padding:8px 16px;border-bottom:1px solid #f0f0f0}
+
+/* Color swatches */
+.color-row{display:flex;align-items:center;gap:6px}
+.swatch{
+  width:22px;height:22px;border-radius:4px;border:1.5px solid rgba(0,0,0,.15);
+  cursor:pointer;transition:.1s;position:relative;overflow:hidden;flex-shrink:0;
+}
+.swatch:hover{transform:scale(1.1)}
+.swatch input[type=color]{
+  position:absolute;inset:-4px;width:calc(100%+8px);height:calc(100%+8px);
+  opacity:0;cursor:pointer;border:none;padding:0;
+}
+.swatch-empty{background:
+  linear-gradient(45deg,#ccc 25%,transparent 25%) -10px 0,
+  linear-gradient(-45deg,#ccc 25%,transparent 25%) -10px 0,
+  linear-gradient(45deg,transparent 75%,#ccc 75%),
+  linear-gradient(-45deg,transparent 75%,#ccc 75%);
+  background-size:20px 20px;background-color:#fff;
+}
+.color-btn{
+  width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
+  background:#f5f5f5;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--text2);cursor:pointer;transition:.1s;flex-shrink:0;
+}
+.color-btn:hover{background:#e8e8e8}
+.search-btn{
+  width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
+  background:#f5f5f5;display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--text2);cursor:pointer;
+}
+
+/* Spinner controls */
+.spinner{display:flex;align-items:center;gap:4px}
+.spin-btn{
+  width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
+  background:#f5f5f5;font-size:16px;color:var(--text2);
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.spin-btn:hover{background:#e8e8e8}
+.spin-val{
+  width:36px;text-align:center;font-size:13px;font-weight:600;
+  border:1px solid var(--border);border-radius:4px;padding:3px 4px;
+  background:#fafafa;
+}
+.spin-val:focus{border-color:var(--accent2);background:#fff}
+
+/* Tabs */
+.tab-bar{display:flex;border-bottom:1px solid var(--border)}
+.tab{
+  flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;
+  color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;
+}
+.tab.active{color:var(--text);border-bottom-color:var(--text)}
+.tab:hover:not(.active){color:var(--text);background:#f8f8f8}
+.tab-panel{display:none;padding:8px 0}
+.tab-panel.active{display:block}
+
+/* Preset Grid */
+#preset-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px;
+}
+.preset-card{
+  border:2px solid var(--border);border-radius:6px;overflow:hidden;
+  cursor:pointer;transition:.15s;background:#fff;position:relative;
+}
+.preset-card:hover{border-color:#aaa;transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.preset-card.active{border-color:var(--accent2)}
+.preset-thumb{width:100%;aspect-ratio:3/2;display:block;background:#f0f0f0}
+.preset-name{
+  font-size:10px;font-weight:600;color:var(--text2);
+  padding:4px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preset-check{
+  position:absolute;top:4px;right:4px;width:18px;height:18px;
+  background:var(--accent2);border-radius:50%;
+  display:none;align-items:center;justify-content:center;color:#fff;font-size:10px;
+}
+.preset-card.active .preset-check{display:flex}
+
+/* Style controls */
+.ctrl-row{display:flex;align-items:center;padding:8px 16px;gap:8px;border-bottom:1px solid #f0f0f0}
+.ctrl-label{font-size:12px;color:var(--text2);font-weight:500;min-width:100px}
+.ctrl-label-right{margin-left:auto;font-size:12px;color:var(--text2);font-weight:600}
+
+/* Split buttons */
+.split-btns{display:flex;gap:2px}
+.split-btn{
+  padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;
+  background:#f0f0f0;color:var(--text2);cursor:pointer;border:1.5px solid transparent;transition:.1s;
+}
+.split-btn.active{background:#e8eef8;color:var(--accent2);border-color:var(--accent2)}
+.split-btn:hover:not(.active){background:#e4e4e4}
+
+/* Toggle icon buttons */
+.icon-btn{
+  width:28px;height:28px;border-radius:5px;border:1.5px solid var(--border);
+  background:#f8f8f8;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;font-size:14px;
+}
+.icon-btn.active{background:#e8eef8;border-color:var(--accent2)}
+.icon-btn:hover:not(.active){background:#ebebeb}
+
+/* Density / Space */
+.select-dropdown{
+  padding:4px 8px;border:1.5px solid var(--border);border-radius:5px;
+  background:#fff;font-size:12px;min-width:80px;
+}
+.select-dropdown:focus{border-color:var(--accent2)}
+
+/* Shapes grid */
+#shape-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:4px;
+  padding:8px 12px;
+}
+.shape-btn{
+  aspect-ratio:1;border:1.5px solid var(--border);border-radius:5px;
+  background:#f8f8f8;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.1s;padding:4px;
+}
+.shape-btn svg{width:100%;height:100%;pointer-events:none}
+.shape-btn:hover{background:#e8eef8;border-color:#aac}
+.shape-btn.active{background:#e8eef8;border-color:var(--accent2)}
+
+/* Batch Section */
+.batch-section{padding:10px 16px;border-bottom:1px solid var(--border)}
+.batch-section h4{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.batch-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.batch-row label{font-size:12px;color:var(--text2);min-width:90px}
+.batch-input{
+  flex:1;padding:4px 8px;border:1.5px solid var(--border);border-radius:5px;
+  background:#fff;font-size:12px;
+}
+.batch-input:focus{border-color:var(--accent2)}
+.batch-btn{
+  width:100%;padding:8px;border-radius:6px;font-size:12px;font-weight:700;
+  margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;
+}
+.batch-btn-generate{background:var(--accent);color:#fff}
+.batch-btn-generate:hover{filter:brightness(1.1)}
+.batch-btn-csv{background:#6c5ce7;color:#fff}
+.batch-btn-csv:hover{filter:brightness(1.1)}
+.batch-btn-zip{background:#00b894;color:#fff}
+.batch-btn-zip:hover{filter:brightness(1.1)}
+
+/* Color Palette Panel */
+#palette-panel{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:420px;max-height:70vh;background:#fff;border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:500;display:none;overflow:hidden;
+}
+#palette-panel.open{display:flex;flex-direction:column}
+.panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+}
+.panel-header h3{font-size:14px;font-weight:700}
+.panel-close{
+  width:26px;height:26px;border-radius:50%;background:#f0f0f0;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
+}
+.panel-close:hover{background:#e0e0e0}
+.palette-list{overflow-y:auto;padding:12px}
+.palette-group-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:8px 0 4px}
+.palette-row{
+  display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;
+}
+.palette-row:hover{background:#f5f5f5}
+.palette-row.active{background:#e8eef8}
+.palette-swatches{display:flex;gap:2px;flex:1}
+.palette-sw{height:18px;flex:1;border-radius:2px}
+.palette-name{font-size:11px;color:var(--text2);min-width:110px}
+
+/* Batch Modal */
+#batch-modal{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:480px;max-height:80vh;background:#fff;border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:500;display:none;overflow:hidden;
+}
+#batch-modal.open{display:flex;flex-direction:column}
+.modal-body{overflow-y:auto;padding:16px;flex:1}
+.modal-section{margin-bottom:16px}
+.modal-section h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;
+  padding-bottom:4px;border-bottom:1px solid var(--border);}
+.modal-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.modal-row label{font-size:12px;color:var(--text2);min-width:130px}
+.modal-input{
+  flex:1;padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;background:#fff;
+}
+.modal-input:focus{border-color:var(--accent2)}
+.modal-select{
+  flex:1;padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;background:#fff;
+}
+.modal-checkbox{width:15px;height:15px;cursor:pointer}
+.progress-bar{
+  width:100%;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;
+  margin-top:8px;display:none;
+}
+.progress-fill{height:100%;background:var(--accent);width:0%;transition:.2s;border-radius:3px}
+.progress-text{font-size:11px;color:var(--text2);text-align:center;margin-top:4px}
+.modal-actions{
+  display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);
+}
+.modal-btn{
+  flex:1;padding:9px;border-radius:6px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;
+}
+.modal-btn-primary{background:var(--accent2);color:#fff}
+.modal-btn-primary:hover{filter:brightness(1.1)}
+.modal-btn-secondary{background:#f0f0f0;color:var(--text)}
+.modal-btn-secondary:hover{background:#e4e4e4}
+
+/* Overlay */
+#overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;display:none;
+}
+#overlay.open{display:block}
+
+/* Checkboxes */
+.toggle-group{display:flex;gap:4px}
+.toggle-icon{
+  width:30px;height:28px;border-radius:5px;border:1.5px solid var(--border);
+  background:#f8f8f8;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;font-size:13px;
+}
+.toggle-icon.active{background:#e8eef8;border-color:var(--accent2)}
+.toggle-icon:hover:not(.active){background:#ebebeb}
+
+/* Scrollbar */
+*::-webkit-scrollbar{width:4px;height:4px}
+*::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+
+/* ColorBrewer palette search */
+.palette-search{
+  width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;margin-bottom:8px;
+}
+.palette-search:focus{border-color:var(--accent2)}
+
+/* Trianglify color panel */
+.tri-palette-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 2px}
+.tri-pal-item{
+  display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;cursor:pointer;
+}
+.tri-pal-item:hover{background:#f5f5f5}
+.tri-pal-item.active{background:#e8eef8}
+.tri-pal-swatches{display:flex;flex:1;height:16px;gap:1px;border-radius:3px;overflow:hidden}
+.tri-pal-sw{flex:1}
+.tri-pal-name{font-size:10px;color:var(--text2);min-width:75px}
+
+/* Random seed */
+.seed-row{display:flex;align-items:center;gap:6px;padding:8px 16px;border-bottom:1px solid #f0f0f0}
+.seed-input{
+  flex:1;padding:4px 8px;border:1.5px solid var(--border);border-radius:5px;
+  font-size:12px;font-family:monospace;background:#fff;
+}
+.seed-input:focus{border-color:var(--accent2)}
+.seed-rnd-btn{
+  padding:4px 10px;border-radius:5px;background:var(--accent2);color:#fff;
+  font-size:11px;font-weight:700;
+}
+.seed-rnd-btn:hover{filter:brightness(1.1)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="header">
+  <div id="logo">
+    <svg viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="#00d4aa"/>
+      <path d="M7 7h6v6H7zM15 7h6v6h-6zM7 15h6v6H7zM15 15h6v6h-6z" fill="#fff" opacity=".6"/>
+      <circle cx="18" cy="18" r="3" fill="#fff"/>
+    </svg>
+    patternpad
+  </div>
+  <div id="header-mid"></div>
+  <button class="hbtn hbtn-coffee">☕ Buy us a coffee</button>
+  <button class="hbtn hbtn-batch" id="open-batch-btn">⚡ Batch Generate</button>
+  <button class="hbtn hbtn-refresh" id="refresh-btn">↻ Refresh</button>
+  <button class="hbtn hbtn-download" id="download-btn">⬇ Download</button>
+</header>
+
+<!-- Banner -->
+<div id="banner">
+  <div id="banner-text">
+    <h3>New: Batch Pattern Generator with 100+ Presets!</h3>
+    <p>Generate hundreds of patterns at once · Export ZIP or CSV · Trianglify colors</p>
+  </div>
+  <button class="banner-btn">Show More ↗</button>
+</div>
+
+<!-- Canvas -->
+<div id="canvas-area">
+  <div id="pattern-wrap">
+    <svg id="pattern-svg" width="800" height="500"></svg>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <!-- Colors -->
+  <div class="section-head">Colors</div>
+  <div class="sidebar-row">
+    <label>Front</label>
+    <div class="color-row">
+      <button class="color-btn" id="front-minus">−</button>
+      <div class="swatch" id="swatch-front1" style="background:#3f51b5" title="Front color 1">
+        <input type="color" id="color-front1" value="#3f51b5">
+      </div>
+      <div class="swatch" id="swatch-front2" style="background:#e91e63" title="Front color 2">
+        <input type="color" id="color-front2" value="#e91e63">
+      </div>
+      <button class="color-btn" id="front-plus">+</button>
+      <button class="search-btn" id="open-palette-btn" title="Color palettes">🎨</button>
+    </div>
+  </div>
+  <div class="sidebar-row">
+    <label>Back</label>
+    <div class="color-row">
+      <div class="swatch swatch-empty" id="swatch-back" title="Background color">
+        <input type="color" id="color-back" value="#ffffff">
+      </div>
+      <button class="color-btn" id="clear-back" title="Transparent">✕</button>
+    </div>
+  </div>
+  <div class="sidebar-row">
+    <label>Outline</label>
+    <div class="color-row">
+      <div class="toggle-group">
+        <button class="toggle-icon active" id="outline-none" title="No outline">⊘</button>
+        <button class="toggle-icon" id="outline-color" title="Colored outline">🖊</button>
+      </div>
+      <div class="swatch" id="swatch-outline" style="background:#1a1a2e;display:none" title="Outline color">
+        <input type="color" id="color-outline" value="#1a1a2e">
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette / Trianglify color system -->
+  <div class="section-head">Color Palette <span style="font-weight:400;font-size:10px;color:#999">Trianglify</span></div>
+  <div class="sidebar-row-full">
+    <select class="select-dropdown" id="palette-select" style="width:100%;margin-bottom:6px">
+      <option value="custom">Custom colors</option>
+      <optgroup label="── Sequential">
+        <option value="Blues">Blues</option><option value="Greens">Greens</option>
+        <option value="Reds">Reds</option><option value="Purples">Purples</option>
+        <option value="Oranges">Oranges</option><option value="Greys">Greys</option>
+        <option value="YlOrRd">YlOrRd</option><option value="YlOrBr">YlOrBr</option>
+        <option value="YlGnBu">YlGnBu</option><option value="YlGn">YlGn</option>
+        <option value="BuGn">BuGn</option><option value="BuPu">BuPu</option>
+        <option value="GnBu">GnBu</option><option value="OrRd">OrRd</option>
+        <option value="PuBu">PuBu</option><option value="PuBuGn">PuBuGn</option>
+        <option value="PuRd">PuRd</option><option value="RdPu">RdPu</option>
+      </optgroup>
+      <optgroup label="── Diverging">
+        <option value="RdYlGn">RdYlGn</option><option value="RdYlBu">RdYlBu</option>
+        <option value="RdGy">RdGy</option><option value="RdBu">RdBu</option>
+        <option value="PiYG">PiYG</option><option value="PRGn">PRGn</option>
+        <option value="PuOr">PuOr</option><option value="BrBG">BrBG</option>
+        <option value="Spectral">Spectral</option>
+      </optgroup>
+      <optgroup label="── Qualitative">
+        <option value="Set1">Set1</option><option value="Set2">Set2</option>
+        <option value="Set3">Set3</option><option value="Paired">Paired</option>
+        <option value="Pastel1">Pastel1</option><option value="Pastel2">Pastel2</option>
+        <option value="Dark2">Dark2</option><option value="Accent">Accent</option>
+      </optgroup>
+      <optgroup label="── Custom">
+        <option value="Neon">Neon Cyber</option><option value="Sunset">Sunset</option>
+        <option value="Ocean">Ocean Deep</option><option value="Forest">Forest</option>
+        <option value="Rose">Rose Gold</option><option value="Monochrome">Monochrome</option>
+        <option value="Pastel">Pastel Dream</option><option value="Earth">Earthy</option>
+      </optgroup>
+    </select>
+    <button class="batch-btn batch-btn-generate" id="random-palette-btn" style="padding:5px;margin-top:4px;border-radius:5px;font-size:11px">
+      🎲 Random Palette
+    </button>
+  </div>
+
+  <!-- Size -->
+  <div class="section-head">Size</div>
+  <div class="sidebar-row">
+    <label>Columns</label>
+    <div class="spinner">
+      <button class="spin-btn" data-spin="cols" data-dir="-1">−</button>
+      <input class="spin-val" id="val-cols" type="number" value="16" min="1" max="40">
+      <button class="spin-btn" data-spin="cols" data-dir="1">+</button>
+    </div>
+  </div>
+  <div class="sidebar-row">
+    <label>Rows</label>
+    <div class="spinner">
+      <button class="spin-btn" data-spin="rows" data-dir="-1">−</button>
+      <input class="spin-val" id="val-rows" type="number" value="9" min="1" max="24">
+      <button class="spin-btn" data-spin="rows" data-dir="1">+</button>
+    </div>
+  </div>
+  <div class="sidebar-row">
+    <label>Cell Size</label>
+    <div class="spinner">
+      <button class="spin-btn" data-spin="cell" data-dir="-1">−</button>
+      <input class="spin-val" id="val-cell" type="number" value="50" min="20" max="200">
+      <button class="spin-btn" data-spin="cell" data-dir="1">+</button>
+    </div>
+  </div>
+  <div class="seed-row">
+    <label style="font-size:12px;color:var(--text2);min-width:40px">Seed</label>
+    <input class="seed-input" id="seed-input" type="number" value="42" min="0" max="999999">
+    <button class="seed-rnd-btn" id="seed-random-btn">🎲</button>
+  </div>
+
+  <!-- Style -->
+  <div class="section-head">Style</div>
+  <div class="tab-bar">
+    <div class="tab active" data-tab="presets">Presets</div>
+    <div class="tab" data-tab="customize">Customize</div>
+  </div>
+
+  <div class="tab-panel active" id="panel-presets">
+    <div id="preset-grid"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-customize">
+    <!-- Space -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">Space</span>
+      <select class="select-dropdown" id="ctrl-space">
+        <option value="0">None</option>
+        <option value="2">XS (2px)</option>
+        <option value="4">S (4px)</option>
+        <option value="6">M (6px)</option>
+        <option value="10">L (10px)</option>
+        <option value="16">XL (16px)</option>
+      </select>
+    </div>
+    <!-- Density -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">Density</span>
+      <select class="select-dropdown" id="ctrl-density">
+        <option value="25">25%</option>
+        <option value="50">50%</option>
+        <option value="75">75%</option>
+        <option value="100" selected>100%</option>
+      </select>
+    </div>
+    <!-- Split -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">Split</span>
+      <div class="split-btns" id="split-btns">
+        <button class="split-btn" data-split="0">0%</button>
+        <button class="split-btn" data-split="25">25%</button>
+        <button class="split-btn active" data-split="50">50%</button>
+        <button class="split-btn" data-split="75">75%</button>
+        <button class="split-btn" data-split="100">100%</button>
+      </div>
+    </div>
+    <!-- Background per block -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">BG per Block</span>
+      <div class="toggle-group">
+        <button class="toggle-icon" id="bg-block-off" title="No BG per block">⊘</button>
+        <button class="toggle-icon active" id="bg-block-on" title="BG per block">▦</button>
+      </div>
+    </div>
+    <!-- Fade Colors -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">Fade Colors</span>
+      <div class="toggle-group">
+        <button class="toggle-icon" id="fade-on" title="Fade">💧</button>
+        <button class="toggle-icon active" id="fade-off" title="No fade">🚫</button>
+      </div>
+    </div>
+    <!-- Fade direction -->
+    <div class="ctrl-row" id="fade-dir-row" style="display:none">
+      <span class="ctrl-label">Fade Dir</span>
+      <select class="select-dropdown" id="ctrl-fade-dir">
+        <option value="h">Horizontal →</option>
+        <option value="v">Vertical ↓</option>
+        <option value="d">Diagonal ↘</option>
+        <option value="r">Radial</option>
+      </select>
+    </div>
+    <!-- Rotation -->
+    <div class="ctrl-row">
+      <span class="ctrl-label">Rotation</span>
+      <select class="select-dropdown" id="ctrl-rotation">
+        <option value="random">Random</option>
+        <option value="0">0°</option>
+        <option value="45">45°</option>
+        <option value="90">90°</option>
+        <option value="180">180°</option>
+      </select>
+    </div>
+
+    <!-- Shapes -->
+    <div class="section-head" style="margin-top:4px">Shapes</div>
+    <div id="shape-grid"></div>
+    <div style="padding:6px 12px;display:flex;gap:6px">
+      <button class="batch-btn batch-btn-generate" id="shapes-all-btn" style="flex:1;padding:6px;font-size:11px;border-radius:5px">All</button>
+      <button class="batch-btn batch-btn-csv" id="shapes-none-btn" style="flex:1;padding:6px;font-size:11px;border-radius:5px">None</button>
+      <button class="batch-btn batch-btn-zip" id="shapes-random-btn" style="flex:1;padding:6px;font-size:11px;border-radius:5px">🎲 Random</button>
+    </div>
+  </div>
+
+  <!-- Batch Generate Section -->
+  <div class="section-head">Batch Generate</div>
+  <div class="batch-section">
+    <div class="batch-row">
+      <label>Count</label>
+      <input class="batch-input" id="batch-count" type="number" value="12" min="1" max="500">
+    </div>
+    <div class="batch-row">
+      <label>Vary</label>
+      <select class="select-dropdown batch-input" id="batch-vary">
+        <option value="seed">Seed only</option>
+        <option value="colors">Colors + Seed</option>
+        <option value="shapes">Shapes + Seed</option>
+        <option value="full">Full Random</option>
+      </select>
+    </div>
+    <div class="batch-row">
+      <label>Canvas W</label>
+      <input class="batch-input" id="batch-w" type="number" value="800">
+    </div>
+    <div class="batch-row">
+      <label>Canvas H</label>
+      <input class="batch-input" id="batch-h" type="number" value="500">
+    </div>
+    <button class="batch-btn batch-btn-generate" id="quick-batch-btn">⚡ Quick Batch (ZIP)</button>
+    <button class="batch-btn batch-btn-csv" id="csv-batch-btn" style="margin-top:4px">📄 Export CSV Manifest</button>
+  </div>
+</aside>
+
+<!-- Overlay -->
+<div id="overlay"></div>
+
+<!-- Batch Modal -->
+<div id="batch-modal">
+  <div class="panel-header">
+    <h3>⚡ Batch Pattern Generator</h3>
+    <button class="panel-close" id="batch-modal-close">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="modal-section">
+      <h4>Generation Settings</h4>
+      <div class="modal-row">
+        <label>Number of patterns</label>
+        <input class="modal-input" id="m-count" type="number" value="24" min="1" max="1000">
+      </div>
+      <div class="modal-row">
+        <label>Variation mode</label>
+        <select class="modal-select" id="m-vary">
+          <option value="seed">Seed only (same design)</option>
+          <option value="colors">Random colors</option>
+          <option value="shapes">Random shapes</option>
+          <option value="preset">Random presets</option>
+          <option value="full" selected>Full random</option>
+        </select>
+      </div>
+      <div class="modal-row">
+        <label>Starting seed</label>
+        <input class="modal-input" id="m-seed" type="number" value="1">
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Canvas Size</h4>
+      <div class="modal-row">
+        <label>Preset size</label>
+        <select class="modal-select" id="m-size-preset">
+          <option value="800x500">800 × 500 (default)</option>
+          <option value="1080x1080">1080 × 1080 (square)</option>
+          <option value="1920x1080">1920 × 1080 (landscape)</option>
+          <option value="1080x1920">1080 × 1920 (portrait)</option>
+          <option value="2400x1600">2400 × 1600 (hi-res)</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="modal-row" id="m-custom-size" style="display:none">
+        <label>Width × Height</label>
+        <input class="modal-input" id="m-custom-w" type="number" value="1200" style="max-width:90px">
+        <span style="font-size:12px;color:#999">×</span>
+        <input class="modal-input" id="m-custom-h" type="number" value="800" style="max-width:90px">
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Export Options</h4>
+      <div class="modal-row">
+        <label>Format</label>
+        <select class="modal-select" id="m-format">
+          <option value="zip">ZIP (individual SVGs)</option>
+          <option value="sheet">Single sheet SVG</option>
+          <option value="csv">CSV manifest only</option>
+          <option value="zipcsv">ZIP + CSV manifest</option>
+        </select>
+      </div>
+      <div class="modal-row">
+        <label>Filename prefix</label>
+        <input class="modal-input" id="m-prefix" type="text" value="pattern">
+      </div>
+      <div class="modal-row">
+        <label>Include metadata</label>
+        <input class="modal-checkbox" id="m-meta" type="checkbox" checked>
+      </div>
+      <div class="modal-row">
+        <label>Include thumbnail</label>
+        <input class="modal-checkbox" id="m-thumb" type="checkbox">
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Batch Variation Options</h4>
+      <div class="modal-row">
+        <label>Color palette</label>
+        <select class="modal-select" id="m-color-mode">
+          <option value="current">Keep current</option>
+          <option value="random-palette">Random palette each</option>
+          <option value="random-color">Random colors each</option>
+          <option value="cycle-palette">Cycle palettes</option>
+        </select>
+      </div>
+      <div class="modal-row">
+        <label>Shape set</label>
+        <select class="modal-select" id="m-shape-mode">
+          <option value="current">Keep current</option>
+          <option value="random-preset">Random preset shapes</option>
+          <option value="random-random">Random selection</option>
+        </select>
+      </div>
+      <div class="modal-row">
+        <label>Grid size</label>
+        <select class="modal-select" id="m-grid-mode">
+          <option value="current">Keep current</option>
+          <option value="random">Random columns/rows</option>
+        </select>
+      </div>
+    </div>
+    <div class="progress-bar" id="m-progress-bar">
+      <div class="progress-fill" id="m-progress-fill"></div>
+    </div>
+    <div class="progress-text" id="m-progress-text"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="modal-btn modal-btn-secondary" id="batch-modal-close2">Cancel</button>
+    <button class="modal-btn modal-btn-primary" id="batch-run-btn">⚡ Generate Batch</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
