@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\(''fs''\\).readFileSync\\(''f:/SVG PATTERN/PatternPad/app.js'',''utf8''\\); console.log\\(''Syntax OK''\\);\")",
+      "Bash(node -e \":*)"
+    ]
+  }
+}
